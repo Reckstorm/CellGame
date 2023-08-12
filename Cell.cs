@@ -1,8 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics.Metrics;
 using System.Linq;
+using System.Net.Sockets;
 using System.Text;
 using System.Threading.Tasks;
+using Timer = System.Windows.Forms.Timer;
 
 namespace CellGame
 {
@@ -10,7 +13,7 @@ namespace CellGame
     {
         public int size { get; set; }
         public int age { get; set; }
-        public static int maxAge { get; set; }
+        public bool isAlive { get; set; }
         public Point point { get; set; }
         public Cell()
         {
@@ -23,8 +26,8 @@ namespace CellGame
         {
             this.size = size;
             this.age = 0;
-            Cell.maxAge = maxAge;
             this.point = point;
+            this.isAlive = false;
         }
     }
 }
