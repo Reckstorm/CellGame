@@ -100,6 +100,7 @@
             Start_btn.TabIndex = 6;
             Start_btn.Text = "Start";
             Start_btn.UseVisualStyleBackColor = true;
+            Start_btn.Click += StartClick;
             // 
             // CellGame
             // 
