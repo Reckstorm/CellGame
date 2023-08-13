@@ -13,12 +13,14 @@ namespace CellGame
     {
         public int size { get; set; }
         public int age { get; set; }
+        public int color { get; set; }
         public bool isAlive { get; set; }
         public Point point { get; set; }
         public Cell()
         {
             this.size = -1;
             this.age = -1;
+            this.color = -1;
             this.point = new Point();
         }
 
@@ -26,6 +28,7 @@ namespace CellGame
         {
             this.size = size;
             this.age = 0;
+            this.color = 0;
             this.point = point;
             this.isAlive = false;
         }

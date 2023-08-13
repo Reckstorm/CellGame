@@ -1,7 +1,6 @@
 using System.Diagnostics.Metrics;
 using System.Drawing;
 using System.Threading;
-using Timer = System.Windows.Forms.Timer;
 
 namespace CellGame
 {
@@ -12,20 +11,39 @@ namespace CellGame
         public static Semaphore semaphore { get; set; }
         private object locker { get; set; }
         public bool isRunning { get; set; }
+        public List<Color> Colors { get; set; }
         public CellGame()
         {
             InitializeComponent();
-            maxAge = 1000;
+            maxAge = 99;
+            InitColors();
             this.Cells = new List<Cell>();
             this.FieldSize_num.Minimum = 10;
             this.FieldSize_num.Maximum = 200;
-            this.FieldSize_num.Value = 50;
-            this.TicInterval_num.Minimum = 500;
+            this.FieldSize_num.Value = 100;
+            this.TicInterval_num.Minimum = 100;
             this.TicInterval_num.Maximum = 9999;
-            this.TicInterval_num.Value = 1000;
+            this.TicInterval_num.Value = 100;
             isRunning = false;
             locker = new object();
             this.PicBox.Paint += DrawGrid;
+        }
+
+        private void InitColors()
+        {
+            Colors = new List<Color>()
+            {
+                Color.FromArgb(22, 114, 136),
+                Color.FromArgb(140, 218, 236),
+                Color.FromArgb(180, 82, 72),
+                Color.FromArgb(212, 140, 132),
+                Color.FromArgb(168, 154, 73),
+                Color.FromArgb(214, 207, 162),
+                Color.FromArgb(60, 180, 100),
+                Color.FromArgb(155, 221, 177),
+                Color.FromArgb(100, 60, 106),
+                Color.FromArgb(131, 99, 148),
+            };
         }
 
         public void DrawGrid(object sender, PaintEventArgs e)
@@ -41,10 +59,10 @@ namespace CellGame
         public void DrawCell(Cell c, PaintEventArgs e)
         {
             Pen pen = new Pen(Color.Black, 1f);
-            Brush brush = pen.Brush;
             if (c.isAlive)
             {
-                e.Graphics.FillRectangle(brush, c.point.X, c.point.Y, c.size, c.size);
+                Brush brush = new SolidBrush(Colors[c.color]);
+                e.Graphics.FillRectangle(brush, c.point.X + 1, c.point.Y + 1, c.size - 1, c.size - 1);
             }
             else
             {
@@ -67,7 +85,7 @@ namespace CellGame
 
         public void ChangeFieldSize(object sender, EventArgs e)
         {
-            if (isRunning) isRunning = !isRunning;
+            if (isRunning) Stop();
             Cells.Clear();
             this.PicBox.Invalidate();
         }
@@ -93,7 +111,7 @@ namespace CellGame
         {
             if (!isRunning)
             {
-                isRunning = !isRunning;
+                lock (locker) isRunning = !isRunning;
                 this.Start_btn.Text = "Stop";
                 Task.Factory.StartNew(() =>
                 {
@@ -102,43 +120,62 @@ namespace CellGame
             }
             else
             {
-                isRunning = !isRunning;
-                this.Start_btn.Text = "Start";
+                Stop();
             }
+        }
+
+        private void Stop()
+        {
+            lock (locker)
+            {
+                isRunning = !isRunning;
+                this.Start_btn.Invoke(() => this.Start_btn.Text = "Start");
+            }
+            MessageBox.Show("Game stopped");
         }
 
         public void Live()
         {
-            semaphore.WaitOne();
             while (isRunning)
             {
-                Cells.ForEach(c =>
-                {
-                    Task.Factory.StartNew(() =>
-                    {
-                        OneCellLifeIteration(c);
-                    });
-                });
+                if (Cells.Any(c => c.age == maxAge)) Stop();
+                LifeIteration();
                 Thread.Sleep((int)this.TicInterval_num.Value);
             }
+        }
+
+        public void LifeIteration()
+        {
+            Cells.ForEach(cell =>
+            {
+                Task.Factory.StartNew(() =>
+                {
+                    OneCellLifeIteration(cell);
+                });
+            });
+        }
+
+        public void OneCellLifeIteration(Cell c)
+        {
+            semaphore.WaitOne();
+            int counter = CountCells(c);
+            if (!c.isAlive && counter == 3) c.isAlive = true;
+            if (c.isAlive && (counter < 2 || counter > 3))
+            {
+                c.age = 0;
+                c.isAlive = false;
+            }
+            if (c.isAlive)
+            {
+                c.color = c.age < maxAge ? c.age / 10 : 9;
+                c.age++;
+            }
+            this.PicBox.Invalidate();
             try
             {
                 semaphore.Release();
             }
             catch (Exception ex) { }
-        }
-
-        public void LifeIteration()
-        {
-            Cells.ForEach(cell => OneCellLifeIteration(cell));
-        }
-
-        public void OneCellLifeIteration(Cell c)
-        {
-            int counter = CountCells(c);
-            if (!c.isAlive && counter == 3) c.isAlive = true;
-            if (c.isAlive && (counter < 2 || counter > 3)) c.isAlive = false;
-            this.PicBox.Invalidate();
         }
 
         public int CountCells(Cell c)
@@ -149,11 +186,8 @@ namespace CellGame
                 for (int j = c.point.Y - (int)this.FieldSize_num.Value; j < c.point.Y + (int)this.FieldSize_num.Value * 2; j += (int)this.FieldSize_num.Value)
                 {
                     if (i == c.point.X && j == c.point.Y) continue;
-                    lock (locker)
-                    {
-                        if (i < 0 || j < 0 || i > PicBox.Width || j > PicBox.Height) continue;
-                        if (Cells.Find(c => c.point.Equals(new Point(i, j))).isAlive) counter++;
-                    }
+                    if (i < 0 || j < 0 || i > PicBox.Width || j > PicBox.Height) continue;
+                    if (Cells.Find(c => c.point.Equals(new Point(i, j))).isAlive) counter++;
                 }
             }
             return counter;
