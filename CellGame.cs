@@ -104,6 +104,7 @@ namespace CellGame
 
         public void StepClick(object sender, EventArgs e)
         {
+            if (isRunning) Stop();
             LifeIteration();
         }
 
